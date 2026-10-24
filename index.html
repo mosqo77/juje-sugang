@@ -451,6 +451,7 @@ tr:last-child td{border-bottom:0}
       <textarea id="rosterIn" style="min-height:130px" placeholder="10101,김하늘&#10;10102,이도윤&#10;10103,박서연"></textarea>
       <div class="row">
         <input id="rosterFile" type="file" accept=".csv,.txt,.xlsx,.xls" multiple style="max-width:260px">
+        <label class="small" for="rosterGrade">파일에 학년이 없으면</label> <select id="rosterGrade" style="width:auto"><option value="">학년 선택</option><option value="1">1학년</option><option value="2">2학년</option><option value="3">3학년</option></select>
         <button class="btn primary" id="rosterSave" type="button" disabled>명단 등록</button>
         <button class="btn" id="rosterSample" type="button">시험용 명단 700명 넣기</button>
       </div>
@@ -649,7 +650,17 @@ if(fbOk){
   isAdmin = !!(cur && cur.email && admins.indexOf(cur.email.toLowerCase()) >= 0);
   const sleepMs = ms => new Promise(r => setTimeout(r, ms));
   db = {
-    doc: p => fs.doc(p),
+    /* Firestore has no nested arrays: the roster [[no,name,code]] is stored as tab-joined strings */
+    doc: p => {
+      const ref = fs.doc(p);
+      if(p !== 'admin/roster') return ref;
+      const dec = d => ({data: () => { const x = d.data(); return x ? {list: (x.list || []).map(r => String(r).split('\t'))} : x; }, exists: d.exists});
+      return {
+        set: o => ref.set({list: ((o && o.list) || []).map(r => r.join('\t'))}),
+        get: () => ref.get().then(dec),
+        onSnapshot: (cb, er) => ref.onSnapshot(d => cb(dec(d)), er)
+      };
+    },
     collection: c => fs.collection(c),
     /* seat claim in one transaction: the capacity check and the write are atomic */
     claimSeat: async (sid, no, add, cap) => {
@@ -1371,7 +1382,7 @@ $('#exList').addEventListener('click', async e => {
 /* class-sheet layout: a "1학년 1반" title row, then a header row with 반/번호/이름(/성별), one student per row */
 function parseGrid(text){
   const rows = text.split(/\r?\n/).map(l => l.split(/\t|,|;/).map(s => s.trim()));
-  let hdr = null, g = '', c = '', found = false, dup = 0, bad = 0;
+  let hdr = null, g = (($('#rosterGrade') || {}).value || ''), c = '', found = false, dup = 0, bad = 0;
   const map = new Map();
   for(const cells of rows){
     const iName = cells.indexOf('이름');
@@ -1428,9 +1439,10 @@ function previewRoster(){
   el.className = 'small ' + (r.list.length ? '' : 'err');
   el.textContent = r.list.length
     ? fmt(r.list.length) + '명을 인식했습니다.' + (r.dup ? ' 학번이 겹친 ' + r.dup + '줄은 마지막 줄만 반영합니다.' : '') + (r.bad ? ' 형식이 맞지 않는 ' + r.bad + '줄은 건너뜁니다.' : '')
-    : '인식된 학생이 없습니다. “학번,이름” 형식인지 확인하세요.';
+    : '인식된 학생이 없습니다. “학번,이름” 형식인지 확인하세요. 파일에 학년이 없다면 위에서 학년을 선택하세요.';
 }
 $('#rosterIn').addEventListener('input', previewRoster);
+$('#rosterGrade').addEventListener('change', previewRoster);
 function loadXlsx(){
   return window.XLSX ? Promise.resolve() : new Promise((res, rej) => {
     const s = document.createElement('script'); s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
