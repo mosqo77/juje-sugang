@@ -656,7 +656,7 @@ if(fbOk){
   firebase.initializeApp(CFG.firebase);
   const auth = firebase.auth(), fs = firebase.firestore();
   let cur = await new Promise(res => { const off = auth.onAuthStateChanged(x => { off(); res(x); }); });
-  if(!cur){ try{ cur = (await auth.signInAnonymously()).user; }catch(e){ canWrite = false; } }
+  if(!cur){ try{ cur = (await auth.signInAnonymously()).user; }catch(e){ canWrite = false; window.__authErr = (e && (e.code || e.message)) || 'unknown'; } }
   const admins = (CFG.admins || []).map(x => String(x).toLowerCase());
   isAdmin = !!(cur && cur.email && admins.indexOf(cur.email.toLowerCase()) >= 0);
   const sleepMs = ms => new Promise(r => setTimeout(r, ms));
@@ -858,7 +858,7 @@ if(local){
   const n = $('#modeNote'); n.hidden = false;
   n.textContent = '지금은 이 브라우저에만 저장되는 체험 모드입니다. 로그인한 상태로 공유 링크를 열면 모든 학생이 같은 신청 현황을 봅니다.';
 }
-if(!canWrite) $('#stNoWrite').hidden = false;
+if(!canWrite){ $('#stNoWrite').hidden = false; if(window.__authErr) $('#stNoWrite').textContent = '접속에 문제가 있어 신청할 수 없습니다. 선생님께 알려 주세요. (오류: ' + window.__authErr + ')'; }
 
 /* ---- header ---- */
 function renderHeader(){
