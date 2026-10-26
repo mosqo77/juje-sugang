@@ -301,10 +301,10 @@ tr:last-child td{border-bottom:0}
 
     <div id="stLogin" class="card login">
       <h2>학번과 이름을 입력하세요</h2>
-      <p class="muted small">학번과 선생님께 받은 개인코드(6자리)를 입력하세요. 학번 20501은 2학년 5반 1번입니다.</p>
+      <p class="muted small">학번과 선생님께 받은 개인코드(6자리)를 입력하세요. 학번 10203은 1학년 2반 3번입니다.</p>
       <form id="loginForm" autocomplete="off">
         <div class="row">
-          <div class="field narrow"><label for="inNo">학번</label><input id="inNo" type="text" inputmode="numeric" placeholder="예: 20501"></div>
+          <div class="field narrow"><label for="inNo">학번</label><input id="inNo" type="text" inputmode="numeric" placeholder="예: 10203"></div>
           <div class="field narrow"><label for="inName">개인코드</label><input id="inName" type="text" maxlength="12" autocapitalize="characters" spellcheck="false" placeholder="예: K7M2QX" style="text-transform:uppercase;letter-spacing:.12em"></div>
         </div>
         <div class="row"><button class="btn primary" type="submit">확인</button></div>
@@ -396,7 +396,7 @@ tr:last-child td{border-bottom:0}
         <p class="muted small">학번과 개인코드를 입력하면 본인의 신청 내용만 볼 수 있습니다.</p>
         <form id="selfForm" autocomplete="off">
           <div class="row">
-            <div class="field narrow"><label for="sNo">학번</label><input id="sNo" type="text" inputmode="numeric" placeholder="예: 20501"></div>
+            <div class="field narrow"><label for="sNo">학번</label><input id="sNo" type="text" inputmode="numeric" placeholder="예: 10203"></div>
             <div class="field narrow"><label for="sNm">개인코드</label><input id="sNm" type="text" maxlength="12" autocapitalize="characters" spellcheck="false" style="text-transform:uppercase;letter-spacing:.12em"></div>
             <button class="btn primary" type="submit">조회</button>
           </div>
@@ -464,7 +464,7 @@ tr:last-child td{border-bottom:0}
         <input id="rosterFile" type="file" accept=".csv,.txt,.xlsx,.xls" multiple style="max-width:260px">
         <label class="small" for="rosterGrade">파일에 학년이 없으면</label> <select id="rosterGrade" style="width:auto"><option value="">학년 선택</option><option value="1">1학년</option><option value="2">2학년</option><option value="3">3학년</option></select>
         <button class="btn primary" id="rosterSave" type="button" disabled>명단 등록</button>
-        <button class="btn" id="rosterSample" type="button">시험용 명단 700명 넣기</button>
+        <button class="btn" id="rosterSample" type="button">시험용 명단 234명 넣기 (1학년 9개 반 × 26명)</button>
       </div>
       <p class="small" id="rosterPreview" aria-live="polite"></p>
     </div>
@@ -488,7 +488,7 @@ tr:last-child td{border-bottom:0}
       <h2>전출·예외 학생</h2>
       <p class="muted small">전출 등으로 신청 대상이 아닌 학생의 학번을 입력하세요. 해당 학생은 신청할 수 없게 되고, 이미 한 신청은 취소되어 자리가 돌아옵니다. 학생 수와 신청률 계산에서도 빠집니다. 학생별 표에서 한 명씩 처리할 수도 있습니다.</p>
       <div class="row">
-        <div class="field wide"><label for="exIn">학번 (쉼표·공백으로 구분)</label><input id="exIn" type="text" placeholder="예: 20501, 20712"></div>
+        <div class="field wide"><label for="exIn">학번 (쉼표·공백으로 구분)</label><input id="exIn" type="text" placeholder="예: 10203, 10517"></div>
         <button class="btn primary" id="exAdd" type="button">제외 처리</button>
       </div>
       <p class="err" id="exErr" role="alert"></p>
@@ -1626,9 +1626,9 @@ $('#rosterFile').addEventListener('change', async e => {
 });
 $('#rosterSample').addEventListener('click', () => {
   const lines = [];
-  for(let c = 1; c <= 20; c++) for(let n = 1; n <= 35; n++){
-    const i = (c - 1) * 35 + n;
-    lines.push('2' + String(c).padStart(2,'0') + String(n).padStart(2,'0') + ',예시' + String(i).padStart(3,'0'));
+  for(let c = 1; c <= 9; c++) for(let n = 1; n <= 26; n++){
+    const i = (c - 1) * 26 + n;
+    lines.push('1' + String(c).padStart(2,'0') + String(n).padStart(2,'0') + ',예시' + String(i).padStart(3,'0'));
   }
   $('#rosterIn').value = lines.join('\n'); previewRoster();
 });
