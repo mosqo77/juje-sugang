@@ -417,7 +417,6 @@ tr:last-child td{border-bottom:0}
           <div class="field"><label for="fSlot">차시</label><select id="fSlot"><option value="">선택</option><option value="m1">월-1기</option><option value="m2">월-2기</option><option value="w1">수-1기</option><option value="w2">수-2기</option></select></div>
           <div class="field narrow"><label for="fCap">정원</label><input id="fCap" type="number" min="1" max="2000" value="26"></div>
         </div>
-        <div style="margin-top:12px"><label for="fDesc">과목 소개</label><textarea id="fDesc" maxlength="300" placeholder="학생에게 보이는 한두 문장 소개"></textarea></div>
         <div class="row" style="margin-top:12px">
           <button class="btn primary" type="submit" id="fSave">등록</button>
           <button class="btn" type="button" id="fCancel" hidden>편집 취소</button>
@@ -427,8 +426,8 @@ tr:last-child td{border-bottom:0}
     </div>
     <div class="card">
       <h2>엑셀로 과목 한꺼번에 등록</h2>
-      <p class="muted small">엑셀(.xlsx)이나 CSV 파일을 올리면 과목을 한 번에 등록합니다. 첫 줄은 <b>과목명, 차시, 정원, 소개</b> 제목이어야 합니다. 차시는 “월-1기”, “월-2기”, “수-1기”, “수-2기”로 쓰고, <b>“전체”</b>라고 쓰면 네 차시에 모두 개설합니다. 정원을 비우면 26명입니다. 같은 차시에 같은 이름이 이미 있으면 건너뜁니다.</p>
-      <textarea id="bulkIn" style="min-height:110px" placeholder="과목명,차시,정원,소개&#10;사회 탐구 교실,전체,26,사회 현상을 탐구합니다"></textarea>
+      <p class="muted small">엑셀(.xlsx)이나 CSV 파일을 올리면 과목을 한 번에 등록합니다. 첫 줄은 <b>과목명, 차시, 정원</b> 제목이어야 합니다. 차시는 “월-1기”, “월-2기”, “수-1기”, “수-2기”로 쓰고, <b>“전체”</b>라고 쓰면 네 차시에 모두 개설합니다. 정원을 비우면 26명입니다. 같은 차시에 같은 이름이 이미 있으면 건너뜁니다.</p>
+      <textarea id="bulkIn" style="min-height:110px" placeholder="과목명,차시,정원&#10;사회 탐구 교실,전체,26"></textarea>
       <div class="row">
         <input id="bulkFile" type="file" accept=".csv,.txt,.xlsx,.xls" style="max-width:260px">
         <button class="btn primary" id="bulkSave" type="button" disabled>과목 등록</button>
@@ -940,7 +939,6 @@ function renderStudent(){
       const seatTxt = si.full ? '<span class="none">정원 마감</span>' : (si.low ? '<span class="low">남은 자리 ' + fmt(si.rem) + '</span>' : '<span>남은 자리 ' + fmt(si.rem) + '</span>');
       return '<button type="button" class="subj cc" style="--h:' + (HUE[nameKey(s)] || 0) + '" data-id="' + esc(s.id) + '" role="radio" aria-checked="' + on + '"' + (blocked ? ' disabled' : '') + '>' + badge + '<span class="radio" aria-hidden="true"></span><span class="body">' +
         '<h3>' + esc(s.name) + '</h3>' +
-        (s.desc ? '<div class="desc">' + esc(s.desc) + '</div>' : '') +
         (cf.length && !on ? '<div class="conf">같은 과목을 ' + esc(slotShort(cf[0])) + '에서 이미 선택했습니다</div>' : '') +
         '<div class="meter ' + (si.full ? 'full' : si.low ? 'warn' : '') + '"><i style="width:' + si.pct + '%"></i></div>' +
         '<div class="seats mono">' + seatTxt + '<span class="muted">정원 ' + fmt(si.cap) + '</span></div></span></button>';
@@ -1282,7 +1280,7 @@ function renderSelf(){
 /* ---- admin: subjects ---- */
 function resetSubjForm(){
   S.editId = null;
-  ['#fName','#fDesc'].forEach(s => { $(s).value = ''; });
+  ['#fName'].forEach(s => { $(s).value = ''; });
   $('#fCap').value = 26; $('#fSlot').value = ''; $('#fErr').textContent = '';
   $('#subjFormTitle').textContent = '과목 등록'; $('#fSave').textContent = '등록'; $('#fCancel').hidden = true;
 }
@@ -1302,12 +1300,12 @@ $('#subjForm').addEventListener('submit', async e => {
   if(S.subjects.some(s => s.id !== id && s.slot === slot && nameKey(s) === nameKey({name}))){ err.textContent = '같은 차시에 같은 이름의 과목이 이미 있습니다. 다른 차시에는 같은 과목을 열 수 있습니다.'; return; }
   const order = prev ? (prev.order || 0) : (Math.max(0, ...S.subjects.map(s => s.order || 0)) + 1);
   try{
-    await db.doc('subjects/' + id).set({name, capacity:cap, slot, desc:$('#fDesc').value.trim(), order, round:S.rid});
+    await db.doc('subjects/' + id).set({name, capacity:cap, slot, order, round:S.rid});
     toast(prev ? '과목을 수정했습니다.' : '과목을 등록했습니다.');
     resetSubjForm();
   }catch(ex){ err.textContent = '저장하지 못했습니다. 관리자 권한을 확인하세요.'; }
 });
-/* bulk subject upload: header row 과목명/차시/정원/소개 */
+/* bulk subject upload: header row 과목명/차시/정원 */
 const SLOT_ALIAS = t => {
   const s = String(t || '').replace(/\s+/g, '').toLowerCase();
   if(!s) return '';
@@ -1340,7 +1338,7 @@ function parseBulk(text){
     const iN = cells.findIndex(x => /^과목명?$/.test(x));
     if(iN >= 0){
       const f = re => cells.findIndex(x => re.test(x));
-      h = {name:iN, slot:f(/차시|기|시간/), cap:f(/정원|인원/), desc:f(/소개|설명/)};
+      h = {name:iN, slot:f(/차시|기|시간/), cap:f(/정원|인원/)};
       return;
     }
     if(!h){ return; }
@@ -1354,7 +1352,7 @@ function parseBulk(text){
       const key = slot + '|' + nameKey({name});
       if(seen.has(key)){ errs.push((i + 1) + '줄 “' + name + '”: 파일 안에서 중복되어 건너뜁니다'); return; }
       seen.add(key);
-      items.push({name, capacity:cap, slot, desc:g('desc')});
+      items.push({name, capacity:cap, slot});
     });
   });
   return {items, errs, header:!!h};
@@ -1381,7 +1379,7 @@ $('#bulkFile').addEventListener('change', async e => {
 });
 $('#bulkTpl').addEventListener('click', async () => {
   const q = v => '"' + String(v).replace(/"/g, '""') + '"';
-  const rows = [['과목명','차시','정원','소개'], ['사회 탐구 교실','전체',26,'사회 현상을 탐구합니다'], ['재미있는 수학 놀이터','월-1기',26,'']];
+  const rows = [['과목명','차시','정원'], ['사회 탐구 교실','전체',26], ['재미있는 수학 놀이터','월-1기',26]];
   const csv = '﻿' + rows.map(r => r.map(q).join(',')).join('\r\n');
   if(!downloads){ toast('이 화면에서는 파일 저장을 쓸 수 없습니다.'); return; }
   try{ await downloads.save({filename:'과목등록_양식.csv', data:csv}); toast('양식을 저장했습니다.'); }catch(ex){ toast('저장하지 못했습니다.'); }
@@ -1395,7 +1393,7 @@ $('#bulkSave').addEventListener('click', async () => {
     const base = Date.now().toString(36);
     for(const x of S.bulk){
       order++; n++;
-      await db.doc('subjects/s' + base + '_' + n).set({name:x.name, capacity:x.capacity, slot:x.slot, desc:x.desc, order, round:S.rid});
+      await db.doc('subjects/s' + base + '_' + n).set({name:x.name, capacity:x.capacity, slot:x.slot, order, round:S.rid});
     }
     toast(fmt(n) + '개 과목을 등록했습니다.');
     $('#bulkIn').value = ''; $('#bulkPreview').textContent = ''; S.bulk = null;
@@ -1428,7 +1426,6 @@ function renderSubjAdmin(){
     const c = S.count[s.id] || 0, confirm = S.confirmDel === s.id;
     return '<div class="adm-subj" style="border-left:5px solid hsl(' + (HUE[nameKey(s)] || 0) + ' 50% 45%);padding-left:12px"><div style="min-width:0"><b>' + esc(s.name) + '</b>' + (s.example ? ' <span class="tag idle">예시</span>' : '') +
       '<div class="small muted">' + '정원 <span class="mono">' + fmt(s.capacity) + '</span> · 신청 <span class="mono">' + fmt(c) + '</span>명</div>' +
-      (s.desc ? '<div class="small" style="margin-top:2px">' + esc(s.desc) + '</div>' : '') +
       (confirm ? '<div class="small err" style="margin-top:4px">' + (c ? '신청한 ' + fmt(c) + '명의 이 과목 선택도 함께 지워집니다. ' : '') + '정말 삭제할까요?</div>' : '') + '</div>' +
       '<div class="acts">' + (confirm
         ? '<button class="btn sm danger" data-act="del-yes" data-id="' + esc(s.id) + '" type="button">삭제 확인</button><button class="btn sm" data-act="del-no" type="button">취소</button>'
@@ -1452,7 +1449,7 @@ $('#subjAdminList').addEventListener('click', async e => {
     const s = S.subjects.find(x => x.id === id); if(!s) return;
     S.editId = id;
     $('#fName').value = s.name || '';
-    $('#fCap').value = s.capacity || 1; $('#fSlot').value = s.slot || ''; $('#fDesc').value = s.desc || '';
+    $('#fCap').value = s.capacity || 1; $('#fSlot').value = s.slot || '';
     $('#subjFormTitle').textContent = '과목 수정'; $('#fSave').textContent = '수정 저장'; $('#fCancel').hidden = false;
     $('#fName').focus(); $('#fName').scrollIntoView({block:'center'});
   } else if(act === 'del'){ S.confirmDel = id; renderSubjAdmin(); }
