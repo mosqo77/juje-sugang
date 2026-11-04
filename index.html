@@ -301,11 +301,11 @@ tr:last-child td{border-bottom:0}
 
     <div id="stLogin" class="card login">
       <h2>학번과 이름을 입력하세요</h2>
-      <p class="muted small">학번과 선생님께 받은 개인코드(5자리)를 입력하세요. 학번 10203은 1학년 2반 3번입니다.</p>
+      <p class="muted small">학번과 선생님께 받은 개인코드(영문자 3개 + 숫자 2개)를 입력하세요. 학번 10203은 1학년 2반 3번입니다.</p>
       <form id="loginForm" autocomplete="off">
         <div class="row">
           <div class="field narrow"><label for="inNo">학번</label><input id="inNo" type="text" inputmode="numeric" placeholder="예: 10203"></div>
-          <div class="field narrow"><label for="inName">개인코드</label><input id="inName" type="text" maxlength="12" autocapitalize="characters" spellcheck="false" placeholder="예: K7M2Q" style="text-transform:uppercase;letter-spacing:.12em"></div>
+          <div class="field narrow"><label for="inName">개인코드</label><input id="inName" type="text" maxlength="12" autocapitalize="characters" spellcheck="false" placeholder="예: KMQ72" style="text-transform:uppercase;letter-spacing:.12em"></div>
         </div>
         <div class="row"><button class="btn primary" type="submit">확인</button></div>
       </form>
@@ -477,7 +477,7 @@ tr:last-child td{border-bottom:0}
         <button class="btn" id="codeAllNo" type="button" hidden>취소</button>
       </div>
       <p class="small err" id="codeNote"></p>
-      <p class="small muted">개인코드는 학생마다 다른 5자리 글자·숫자입니다(0·O, 1·I·L 같이 헷갈리는 글자는 쓰지 않습니다). 학급을 고른 뒤 내려받으면 그 학급 것만 저장됩니다. 학생 명단을 다시 등록해도 기존 코드는 그대로 유지됩니다. 코드는 관리자만 볼 수 있습니다.</p>
+      <p class="small muted">개인코드는 학생마다 다른 영문자 3개 + 숫자 2개입니다(예: KMQ72). 0·O, 1·I·L 같이 헷갈리는 글자는 쓰지 않습니다. 학급을 고른 뒤 내려받으면 그 학급 것만 저장됩니다. 학생 명단을 다시 등록해도 기존 코드는 그대로 유지됩니다. 코드는 관리자만 볼 수 있습니다.</p>
       <div class="tablewrap"><table style="min-width:560px"><thead><tr><th>연번</th><th>학번</th><th>이름</th><th>학급</th><th>개인코드</th><th>관리</th></tr></thead><tbody id="rlRows"></tbody></table></div>
       <div class="pager"><button class="btn sm" id="rlPrev" type="button">이전</button><span class="mono" id="rlPage"></span><button class="btn sm" id="rlNext" type="button">다음</button></div>
     </div>
@@ -586,12 +586,13 @@ function h53(str){
   h2=Math.imul(h2^(h2>>>16),2246822507)^Math.imul(h1^(h1>>>13),3266489909);
   return (4294967296*(2097151&h2)+(h1>>>0)).toString(36);
 }
-/* personal code: 5 chars, no look-alikes (0/O, 1/I/L). Hash is stretched so the public list is costly to brute-force. */
-const CODE_CH = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+/* personal code: 3 letters + 2 digits (e.g. KMQ72), no look-alikes (0/O, 1/I/L). Hash is stretched so the public list is costly to brute-force. */
+const CODE_LET = 'ABCDEFGHJKMNPQRSTUVWXYZ', CODE_DIG = '23456789'; /* letters without I, L, O; digits without 0, 1 */
 const normCode = c => String(c || '').toUpperCase().replace(/[\s\-]/g, '');
 function newCode(){
   const a = new Uint32Array(5); (window.crypto || {getRandomValues: x => { for(let i=0;i<x.length;i++) x[i] = Math.floor(Math.random()*4294967296); }}).getRandomValues(a);
-  let s = ''; for(let i = 0; i < 5; i++) s += CODE_CH[a[i] % CODE_CH.length];
+  let s = ''; for(let i = 0; i < 3; i++) s += CODE_LET[a[i] % CODE_LET.length];
+  for(let i = 3; i < 5; i++) s += CODE_DIG[a[i] % CODE_DIG.length];
   return s;
 }
 function cred(no, code){
