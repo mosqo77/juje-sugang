@@ -301,10 +301,10 @@ tr:last-child td{border-bottom:0}
 
     <div id="stLogin" class="card login">
       <h2>학번과 이름을 입력하세요</h2>
-      <p class="muted small">학번과 선생님께 받은 개인코드(영문자 3개 + 숫자 2개)를 입력하세요. 학번 10203은 1학년 2반 3번입니다.</p>
+      <p class="muted small">학번과 선생님께 받은 개인코드(영문자 3개 + 숫자 2개)를 입력하세요. 학번 10131은 1학년 1반 31번입니다.</p>
       <form id="loginForm" autocomplete="off">
         <div class="row">
-          <div class="field narrow"><label for="inNo">학번</label><input id="inNo" type="text" inputmode="numeric" placeholder="예: 10203"></div>
+          <div class="field narrow"><label for="inNo">학번</label><input id="inNo" type="text" inputmode="numeric" placeholder="예: 10131"></div>
           <div class="field narrow"><label for="inName">개인코드</label><input id="inName" type="text" maxlength="12" autocapitalize="characters" spellcheck="false" placeholder="예: KMQ72" style="text-transform:uppercase;letter-spacing:.12em"></div>
         </div>
         <div class="row"><button class="btn primary" type="submit">확인</button></div>
@@ -396,7 +396,7 @@ tr:last-child td{border-bottom:0}
         <p class="muted small">학번과 개인코드를 입력하면 본인의 신청 내용만 볼 수 있습니다.</p>
         <form id="selfForm" autocomplete="off">
           <div class="row">
-            <div class="field narrow"><label for="sNo">학번</label><input id="sNo" type="text" inputmode="numeric" placeholder="예: 10203"></div>
+            <div class="field narrow"><label for="sNo">학번</label><input id="sNo" type="text" inputmode="numeric" placeholder="예: 10131"></div>
             <div class="field narrow"><label for="sNm">개인코드</label><input id="sNm" type="text" maxlength="12" autocapitalize="characters" spellcheck="false" style="text-transform:uppercase;letter-spacing:.12em"></div>
             <button class="btn primary" type="submit">조회</button>
           </div>
@@ -471,7 +471,7 @@ tr:last-child td{border-bottom:0}
       <div class="row">
         <div class="field narrow"><label for="rClass">학급</label><select id="rClass"><option value="">전체</option></select></div>
         <div class="field wide"><label for="rText">학번 또는 이름</label><input id="rText" type="search" placeholder="검색"></div>
-        <button class="btn" id="codeCsv" type="button">개인코드 내려받기 (CSV)</button>
+        <button class="btn" id="codeCsv" type="button">개인코드 내려받기 (엑셀)</button>
         <button class="btn primary" id="codeFill" type="button" hidden>코드 발급</button>
         <button class="btn danger" id="codeAll" type="button">개인코드 일괄 재발급</button>
         <button class="btn" id="codeAllNo" type="button" hidden>취소</button>
@@ -485,7 +485,7 @@ tr:last-child td{border-bottom:0}
       <h2>전출·예외 학생</h2>
       <p class="muted small">전출 등으로 신청 대상이 아닌 학생의 학번을 입력하세요. 해당 학생은 신청할 수 없게 되고, 이미 한 신청은 취소되어 자리가 돌아옵니다. 학생 수와 신청률 계산에서도 빠집니다. 학생별 표에서 한 명씩 처리할 수도 있습니다.</p>
       <div class="row">
-        <div class="field wide"><label for="exIn">학번 (쉼표·공백으로 구분)</label><input id="exIn" type="text" placeholder="예: 10203, 10517"></div>
+        <div class="field wide"><label for="exIn">학번 (쉼표·공백으로 구분)</label><input id="exIn" type="text" placeholder="예: 10131, 10517"></div>
         <button class="btn primary" id="exAdd" type="button">제외 처리</button>
       </div>
       <p class="err" id="exErr" role="alert"></p>
@@ -593,6 +593,8 @@ function newCode(){
   const a = new Uint32Array(5); (window.crypto || {getRandomValues: x => { for(let i=0;i<x.length;i++) x[i] = Math.floor(Math.random()*4294967296); }}).getRandomValues(a);
   let s = ''; for(let i = 0; i < 3; i++) s += CODE_LET[a[i] % CODE_LET.length];
   for(let i = 3; i < 5; i++) s += CODE_DIG[a[i] % CODE_DIG.length];
+  /* Excel turns "MAR25" into a date, so skip codes that start like a month abbreviation */
+  if(/^(JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)/.test(s)) return newCode();
   return s;
 }
 function cred(no, code){
@@ -1777,7 +1779,7 @@ $('#codeAll').addEventListener('click', async () => {
     const list = S.roster.map(p => { if(!targets.has(p[0])) return p; let c; do{ c = newCode(); }while(used.has(c)); used.add(c); return [p[0], p[1], c]; });
     await new Promise(r => setTimeout(r, 30));
     await saveCodes(list);
-    toast(fmt(targets.size) + '명의 개인코드를 새로 발급했습니다. CSV로 내려받아 학생에게 다시 나눠 주세요.');
+    toast(fmt(targets.size) + '명의 개인코드를 새로 발급했습니다. 엑셀로 내려받아 학생에게 다시 나눠 주세요.');
   }catch(ex){ toast('재발급하지 못했습니다.'); }
   renderCodeAll();
 });
@@ -1796,11 +1798,14 @@ $('#codeCsv').addEventListener('click', async () => {
   const cv = $('#rClass').value, rows = S.roster.filter(p => p[2] && (!cv || clsKey(p[0]) === cv))
     .slice().sort((a,b) => a[0].localeCompare(b[0], 'ko', {numeric:true}));
   if(!rows.length){ toast('내려받을 코드가 없습니다.'); return; }
-  const q = v => '"' + String(v).replace(/"/g,'""') + '"';
-  const csv = '﻿' + [['학급','학번','이름','개인코드']].concat(rows.map(p => [classLabel(clsKey(p[0])), p[0], p[1], p[2]])).map(r => r.map(q).join(',')).join('\r\n');
   if(!downloads){ toast('이 화면에서는 파일 저장을 쓸 수 없습니다.'); return; }
-  try{ await downloads.save({filename:'주제선택_개인코드' + (cv ? '_' + classLabel(cv).replace(/\s/g,'') : '') + '.csv', data:csv}); toast('저장했습니다. 학생에게 나눠 준 뒤 파일은 안전하게 보관하세요.'); }
-  catch(ex){ if(!ex || ex.code !== 'declined') toast('저장하지 못했습니다.'); }
+  /* xlsx keeps every cell as text, so Excel never turns codes like MAR25 into dates */
+  const sheet = {name:'개인코드', rows:[['학급','학번','이름','개인코드']].concat(rows.map(p => [classLabel(clsKey(p[0])), String(p[0]), p[1], p[2]])), widths:[14, 10, 16, 12]};
+  try{
+    const blob = new Blob([makeXlsx([sheet])], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+    await downloads.save({filename:'주제선택_개인코드' + (cv ? '_' + classLabel(cv).replace(/\s/g,'') : '') + '.xlsx', data:blob});
+    toast('저장했습니다. 학생에게 나눠 준 뒤 파일은 안전하게 보관하세요.');
+  }catch(ex){ if(!ex || ex.code !== 'declined') toast('저장하지 못했습니다.'); }
 });
 ['#qText','#qState','#qClass'].forEach(s => $(s).addEventListener('input', () => { S.page = 0; renderRoster(); }));
 $('#prevBtn').addEventListener('click', () => { S.page = Math.max(0, S.page - 1); renderRoster(); });
